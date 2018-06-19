@@ -350,7 +350,7 @@ def deltahedge(buy_sell, symbol, current_delta, target_delta):
 
 def order_fulfill():
     # Function to monitor and amend deltahedge orders until fulfilled or aborted
-    counter = 1
+    counter = {}
     orders = ib.openTrades()  # receive openorders
     if orders == []:
         print("No open orders")  # if all orders are executed or none have been created, exit function
@@ -360,15 +360,19 @@ def order_fulfill():
             for t in orders:  # t becomes an order object
                 contract = t.contract  # define contract for t
                 mktdata = ib.reqMktData(contract, "", True)  # request current marketdata
+                if t.contract.symbol in counter:
+                    pass
+                else:
+                    counter[t.contract.symbol]=1
                 while True:  # Loop to wait for market data of contract
                     try:
                         test = mktdata.bid  # try to use marketdata
                         break  # if no error, break While and proceed
                     except AttributeError:
                         ib.sleep(0.1)  # if error occurs, sleep and go back into while loop until data arrives
-                print("Changing %s order attempt %d / 5" % (t.contract.symbol, counter))
+                print("Changing %s order attempt %d / 5" % (t.contract.symbol, counter[t.contract.symbol]))
                 # Amend order up to 5 times
-                if counter <= 5:
+                if counter[t.contract.symbol] <= 5:
                     try:  # Changes order. Try necessary if order has been executed meanwhile
                         if t.order.action == "BUY":
                             t.order.lmtPrice = mktdata.bid
@@ -380,7 +384,7 @@ def order_fulfill():
                         orders = ib.openTrades()
                         continue
                 # If spread > threshold cancel orders and wait for next deltahedge
-                elif (counter >= 5) and (((mktdata.ask / mktdata.bid) - 1) > 0.0010):
+                elif (counter[t.contract.symbol] >= 5) and (((mktdata.ask / mktdata.bid) - 1) > 0.0010):
                     ib.cancelOrder(t.order)  # cancel order
                     print("%s Order not fulfilled / not amended / cancelled" % t.contract.symbol)
                 # If spread small cross spread via market order
@@ -390,12 +394,12 @@ def order_fulfill():
                     trade = ib.placeOrder(contract, new_order)
                     print("%s amended to market order" % t.contract.symbol)
 
-                counter += 1
+                counter[t.contract.symbol] += 1
                 # Wait 5 seconds for order execution, request openorders and repeat if necessary
             ib.sleep(5)
             orders = ib.openTrades()
             # Avoid bugs by exiting after 7 attempts and cancelling order
-            if counter > 7:
+            if counter[t.contract.symbol] > 7:
                 ib.cancelOrder(t.order)
                 print("Too many attempts -> aborted. Still orders open %s" % orders)
                 break
@@ -461,9 +465,6 @@ def hedge():
     update_positions()
     update_greeks()
     create_deltahedges()
-
-
-hedge()
 # keep_hedging()
 
 # while active_trading() == True:
