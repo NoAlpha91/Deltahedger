@@ -1,0 +1,9 @@
+symbol,target_delta,threshold
+AAPL,0,15
+GM,0,25
+CSCO,0,25
+JPM,0,20
+JNJ,0,35
+NKE,0,30
+AXP,35,50
+GE,0,60
